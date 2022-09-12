@@ -1,14 +1,17 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import time
 import pandas as pd
 import json
 
-path = "pathtoyourchromedriver\chromedriver.exe"
+path = "D:\chromedriver\chromedriver.exe"
 # download the chromedriver.exe from https://chromedriver.storage.googleapis.com/index.html?path=106.0.5249.21/
 
-driver = webdriver.Chrome(path)
+#driver = webdriver.Chrome(path)
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
 # Login
 def login():
@@ -36,19 +39,26 @@ def getProfileURLs(companyName):
     driver.get("https://www.linkedin.com/company/" + companyName + "/people/?keywords=M%26A%2CMergers%2CAcquisitions")
     time.sleep(3)
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    time.sleep(1)
+    time.sleep(3)
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(3)
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    source = BeautifulSoup(driver.page_source)
-
+    time.sleep(3)
+    source = BeautifulSoup(driver.page_source, features="html.parser")
+    print("CHECKPOINT 1: Made it here!!")
     visibleEmployeesList = []
-    visibleEmployees = source.find_all('a', class_='app-aware-link')
+    visibleEmployees = source.find_all('section', class_='artdeco-card artdeco-card--with-hover ember-view full-width')
+   
     for profile in visibleEmployees:
-        if profile.get('href').split('/')[3] ==  'in':
-            visibleEmployeesList.append(profile.get('href'))
+        if profile.find("a",class_="ember-view").get('href').split('/')[1] ==  'in':
+            visibleEmployeesList.append(profile.find("a",class_="ember-view").get('href'))
+            print("CHECKPOINT 1.x: Grabbed this one!!")
 
+    print("CHECKPOINT 2: Visible employee list :",visibleEmployeesList)
     invisibleEmployeeList = []
     invisibleEmployees = source.find_all('div', class_='artdeco-entity-lockup artdeco-entity-lockup--stacked-center artdeco-entity-lockup--size-7 ember-view')
+    
+
     for invisibleguy in invisibleEmployees:
         title = invisibleguy.findNext('div', class_='lt-line-clamp lt-line-clamp--multi-line ember-view').contents[0].strip('\n').strip('  ')
         invisibleEmployeeList.append(title)
@@ -174,8 +184,10 @@ if __name__ == "__main__":
     employees = {}
     for company in companies:
         searchable = getProfileURLs(company)
+        print(searchable[0])
         for employee in searchable[0]:
-            employees[employee] = returnProfileInfo(employee, company)
+            employees[employee] = returnProfileInfo("https://www.linkedin.com"+employee, company)
+            print("one more employee!!")
     with open('m&a.json', 'w') as f:
         json.dump(employees, f)
     time.sleep(10)
